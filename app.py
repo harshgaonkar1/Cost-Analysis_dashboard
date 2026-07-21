@@ -144,6 +144,7 @@ _VENDOR_SUFFIXES = re.compile(
     r'\s+(branch|mahavir|techno)\s*$', re.IGNORECASE
 )
 
+
 def extract_location(filename: str) -> str:
     """
     'Punjab Branch.xlsx'  -> 'punjab'
@@ -477,4 +478,4 @@ def compile_spreadsheets():
 if __name__ == '__main__':
     app.run(debug=True)
 
-    # & d:/Cost-Analysis_dashboard/.venv/Scripts/Activate.ps1
+# & d:/Cost-Analysis_dashboard/.venv/Scripts/Activate.ps1
