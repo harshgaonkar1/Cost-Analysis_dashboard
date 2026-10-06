@@ -478,4 +478,4 @@ def compile_spreadsheets():
 if __name__ == '__main__':
     app.run(debug=True)
 
-# & d:/Cost-Analysis_dashboard/.venv/Scripts/Activate.ps1
+# .\venv\Scripts\Activate.ps1
