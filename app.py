@@ -97,6 +97,24 @@ def need_cols(df, cols, label):
         raise AppError(f"'{label}' missing column(s): {missing}. Found: {list(df.columns)}")
 
 
+DOORLOCK_PART_CODES = {"FL221ELDLK010", "FL221ELDLK090"}
+DOORLOCK_PART_DESCRIPTION = "DOORLOCKNXTGENDLS100"
+
+
+def _clean_text(value) -> str:
+    if pd.isna(value):
+        return ""
+    return str(value).strip()
+
+
+def _resolve_column(df: pd.DataFrame, target: str) -> str | None:
+    target_norm = target.strip().lower()
+    for col in df.columns:
+        if str(col).strip().lower() == target_norm:
+            return col
+    return None
+
+
 def apply_suspension_logic(df: pd.DataFrame) -> pd.DataFrame:
     if 'FQC VERIFICATION' not in df.columns:
         df['FQC VERIFICATION'] = ''
@@ -115,6 +133,27 @@ def apply_suspension_logic(df: pd.DataFrame) -> pd.DataFrame:
         return row.get('FQC VERIFICATION', '')
 
     df['FQC VERIFICATION'] = df.apply(_resolve, axis=1)
+    return df
+
+
+def apply_doorlock_logic(df: pd.DataFrame) -> pd.DataFrame:
+    """Directly approve qualifying door lock rows so they receive Credit."""
+    if 'FQC VERIFICATION' not in df.columns:
+        df['FQC VERIFICATION'] = ''
+
+    part_code_col = _resolve_column(df, 'PART CODE')
+    part_desc_col = _resolve_column(df, 'PART DESCRIPTION')
+    if not part_code_col or not part_desc_col:
+        return df
+
+    part_codes = df[part_code_col].map(lambda v: _clean_text(v).upper())
+    part_descs = df[part_desc_col].map(lambda v: _clean_text(v).upper())
+    mask = part_codes.isin(DOORLOCK_PART_CODES) & (part_descs == DOORLOCK_PART_DESCRIPTION)
+
+    if mask.any():
+        df['FQC VERIFICATION'] = df['FQC VERIFICATION'].astype(object)
+        df.loc[mask, 'FQC VERIFICATION'] = 'APPROVED'
+
     return df
 
 
@@ -243,8 +282,9 @@ def process_one_branch(
             "check column values match across files."
         )
 
-    # Suspension logic
+    # Suspension & door lock approval logic
     merged = apply_suspension_logic(merged)
+    merged = apply_doorlock_logic(merged)
 
     # Credit / Debit
     need_cols(merged, ['TRF. PRICE'], f'merged result ({location_label})')
