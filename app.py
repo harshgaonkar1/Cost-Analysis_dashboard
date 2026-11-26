@@ -99,6 +99,8 @@ def need_cols(df, cols, label):
 
 DOORLOCK_PART_CODES = {"FL221ELDLK010", "FL221ELDLK090"}
 DOORLOCK_PART_DESCRIPTION = "DOORLOCKNXTGENDLS100"
+DOORLOCK_PART_CAT = "TDL"
+DOORLOCK_SUPPLIER = "TECKNIC"
 
 
 def _clean_text(value) -> str:
@@ -113,6 +115,14 @@ def _resolve_column(df: pd.DataFrame, target: str) -> str | None:
         if str(col).strip().lower() == target_norm:
             return col
     return None
+
+
+def _set_masked_value(df: pd.DataFrame, target_col: str, mask: pd.Series, value: str) -> None:
+    col = _resolve_column(df, target_col) or target_col
+    if col not in df.columns:
+        df[col] = ""
+    df[col] = df[col].astype(object)
+    df.loc[mask, col] = value
 
 
 def apply_suspension_logic(df: pd.DataFrame) -> pd.DataFrame:
@@ -137,7 +147,7 @@ def apply_suspension_logic(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def apply_doorlock_logic(df: pd.DataFrame) -> pd.DataFrame:
-    """Directly approve qualifying door lock rows so they receive Credit."""
+    """Directly approve qualifying door lock rows and set PART CAT and SUPPLIER."""
     if 'FQC VERIFICATION' not in df.columns:
         df['FQC VERIFICATION'] = ''
 
@@ -151,8 +161,9 @@ def apply_doorlock_logic(df: pd.DataFrame) -> pd.DataFrame:
     mask = part_codes.isin(DOORLOCK_PART_CODES) & (part_descs == DOORLOCK_PART_DESCRIPTION)
 
     if mask.any():
-        df['FQC VERIFICATION'] = df['FQC VERIFICATION'].astype(object)
-        df.loc[mask, 'FQC VERIFICATION'] = 'APPROVED'
+        _set_masked_value(df, 'FQC VERIFICATION', mask, 'APPROVED')
+        _set_masked_value(df, 'PART CAT', mask, DOORLOCK_PART_CAT)
+        _set_masked_value(df, 'SUPPLIER', mask, DOORLOCK_SUPPLIER)
 
     return df
 
